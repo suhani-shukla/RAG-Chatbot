@@ -4,3 +4,7 @@ __pycache__/
 .env
 vector_db/*.faiss
 vector_db/*.pkl
+.env
+
+data/*
+!data/.gitkeep
