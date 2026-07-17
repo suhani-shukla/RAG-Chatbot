@@ -38,7 +38,7 @@ RAG_Chatbot/
 
 ## Build Roadmap
 
-- [x] Part 1: Environment setup, project structure
+- [ ] Part 1: Environment setup, project structure
 - [ ] Part 2: Load and preprocess documents
 - [ ] Part 3: Split documents into chunks
 - [ ] Part 4: Generate vector embeddings
