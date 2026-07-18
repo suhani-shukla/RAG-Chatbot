@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archive — RAG Chatbot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app">
+
+    <!-- LEFT PANE: Document catalog -->
+    <aside class="catalog">
+      <div class="catalog-header">
+        <span class="eyebrow">Archive</span>
+        <h1>Your Document</h1>
+      </div>
+
+      <div class="catalog-body">
+        <div id="drop-zone" class="drop-zone">
+          <input type="file" id="file-input" accept=".txt,.pdf" hidden>
+          <div class="drop-icon">＋</div>
+          <p class="drop-text">Drop a file here or <span class="drop-link">browse</span></p>
+          <p class="drop-hint">.txt or .pdf</p>
+        </div>
+
+        <div id="doc-card" class="doc-card" hidden>
+          <div class="doc-card-top">
+            <span class="doc-tag">Indexed</span>
+          </div>
+          <p class="doc-name" id="doc-name">—</p>
+          <p class="doc-meta" id="doc-meta">—</p>
+          <button id="replace-btn" class="ghost-btn">Replace document</button>
+        </div>
+
+        <div id="status-line" class="status-line">No document loaded yet.</div>
+      </div>
+
+      <div class="catalog-footer">
+        <p>Answers are grounded only in the uploaded document. Every reply cites the passage it came from.</p>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANE: Conversation -->
+    <main class="conversation">
+      <div class="conversation-header">
+        <span class="eyebrow">Reading Room</span>
+        <h2>Ask about your document</h2>
+      </div>
+
+      <div id="chat" class="chat">
+        <div class="empty-state" id="empty-state">
+          <p>Upload a document on the left to begin.</p>
+        </div>
+      </div>
+
+      <form id="chat-form" class="chat-form">
+        <input type="text" id="question" class="chat-input" placeholder="Ask a question..." autocomplete="off" disabled required>
+        <button type="submit" id="send-btn" class="send-btn" disabled>Ask</button>
+      </form>
+    </main>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
