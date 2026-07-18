@@ -1,0 +1,143 @@
+RAG (Retrieval-Augmented Generation) — Reference Notes
+
+1. WHAT IS RAG?
+Retrieval-Augmented Generation (RAG) is an architecture that combines a
+retrieval system with a large language model (LLM) to produce answers
+grounded in external data, rather than relying solely on what the model
+memorized during training. Instead of asking an LLM to answer purely from
+its internal parameters, a RAG system first searches a knowledge base for
+relevant information, then feeds that information to the LLM as context
+alongside the user's question.
+
+2. WHY RAG EXISTS
+LLMs have three core limitations that RAG addresses:
+- Knowledge cutoff: a model only knows what existed in its training data
+  up to a certain date. RAG lets it answer questions about newer or
+  private information it was never trained on.
+- Hallucination: models can generate plausible-sounding but false
+  information. Grounding answers in retrieved text reduces (though does
+  not eliminate) this risk.
+- Domain specificity: a general-purpose model may lack depth in a
+  narrow domain (e.g. a company's internal policies, a specific legal
+  code, or a research paper). RAG lets it "read" that domain on demand.
+
+3. CORE ARCHITECTURE / PIPELINE
+A typical RAG pipeline has these stages:
+  a) Ingestion: raw documents (PDFs, text, web pages, databases) are
+     collected.
+  b) Preprocessing: documents are cleaned (removing noise, normalizing
+     whitespace, extracting text from formats like PDF).
+  c) Chunking: documents are split into smaller passages, since
+     embedding models and LLMs have limited context windows, and
+     smaller chunks retrieve more precisely than whole documents.
+  d) Embedding: each chunk is converted into a numeric vector using an
+     embedding model. Semantically similar text produces vectors that
+     are close together in vector space.
+  e) Vector storage: embeddings are stored in a vector database or
+     index (e.g. FAISS, Pinecone, Chroma, Weaviate) optimized for fast
+     similarity search.
+  f) Retrieval: when a user asks a question, the question itself is
+     embedded, and the vector store returns the most similar chunks
+     (commonly called "top-k retrieval").
+  g) (Optional) Reranking: a secondary model re-scores the retrieved
+     chunks for relevance, since initial vector similarity search can
+     be a coarse filter.
+  h) Prompt construction: the retrieved chunks are combined with the
+     user's question into a single prompt, often with explicit
+     instructions to answer only from the provided context.
+  i) Generation: the LLM produces a final answer using the prompt.
+  j) Citation (optional but recommended): the response references which
+     source chunks it drew from, improving trust and auditability.
+
+4. CHUNKING STRATEGIES
+- Fixed-size chunking: split text every N characters/tokens, often with
+  overlap so a sentence spanning a boundary isn't cut off entirely.
+- Recursive/structure-aware chunking: split preferentially on paragraph
+  breaks, then sentences, then words — keeps chunks more coherent.
+- Semantic chunking: split based on topic shifts detected via embeddings
+  rather than fixed length.
+- Document-aware chunking: respect natural document structure (headers,
+  sections, table boundaries) rather than splitting blindly.
+
+5. EMBEDDING MODELS
+Common choices include:
+- Open-source, local models: Sentence Transformers (e.g. all-MiniLM-L6-v2),
+  BGE, GTE — run without an API, no per-request cost.
+- Hosted API models: OpenAI's text-embedding models, Google's embedding
+  models, Cohere embeddings — typically higher quality but require an
+  API key and incur cost per call.
+Embedding dimension and model choice affect both retrieval quality and
+compute/storage cost — larger embeddings capture more nuance but take
+more space and are slower to search.
+
+6. VECTOR STORES
+- FAISS: a library (not a full database) for efficient similarity search
+  over vectors, runs locally, good for small-to-medium datasets.
+- Chroma: an open-source vector database with a simple developer API,
+  good for prototyping.
+- Pinecone / Weaviate / Qdrant: managed or self-hosted vector databases
+  built for production scale, offering features like metadata filtering,
+  hybrid search, and horizontal scaling.
+Similarity search commonly uses distance metrics such as cosine
+similarity, dot product, or Euclidean (L2) distance.
+
+7. RETRIEVAL QUALITY CONSIDERATIONS
+- Top-k selection: how many chunks to retrieve. Too few risks missing
+  relevant context; too many dilutes the prompt and can confuse the LLM.
+- Hybrid search: combining keyword-based (e.g. BM25) search with vector
+  similarity search often outperforms either alone, since exact keyword
+  matches (like product codes or names) are sometimes missed by pure
+  semantic search.
+- Reranking: using a cross-encoder or LLM-based reranker on the initial
+  retrieved set to reorder by true relevance before generation.
+
+8. PROMPT CONSTRUCTION BEST PRACTICES
+- Explicitly instruct the model to answer only from the provided
+  context and to say when it doesn't know, reducing hallucination.
+- Include source labels (filename, page, chunk ID) in the context so
+  the model can cite them in its answer.
+- Keep context organized and avoid unnecessary duplication across
+  chunks, which wastes context window space.
+
+9. COMMON APPLICATIONS
+- Customer support assistants grounded in product documentation.
+- Legal and compliance document search and summarization.
+- Healthcare information assistants referencing clinical guidelines.
+- Enterprise knowledge bases (internal wikis, policies, past tickets).
+- Research assistants that search papers or technical documentation.
+- Financial advisory tools referencing filings, reports, and disclosures.
+
+10. LIMITATIONS AND FAILURE MODES
+- Garbage in, garbage out: if the underlying documents are outdated,
+  incorrect, or poorly chunked, retrieval will surface poor context.
+- Retrieval mismatch: a query phrased very differently from the source
+  text may fail to retrieve relevant chunks (semantic search isn't
+  perfect at bridging vocabulary gaps).
+- Context window limits: too many or too large retrieved chunks can
+  exceed the LLM's context window or overwhelm it with irrelevant text.
+- Latency: multi-stage pipelines (embed query, search, rerank, generate)
+  add latency compared to a direct LLM call.
+- Still can hallucinate: RAG reduces but does not guarantee elimination
+  of hallucination, especially if retrieved context is ambiguous or if
+  the LLM ignores instructions to stick to context.
+
+11. EVALUATING A RAG SYSTEM
+- Retrieval metrics: precision/recall of retrieved chunks against a set
+  of benchmark questions with known correct source passages.
+- Answer quality metrics: human evaluation or LLM-as-judge scoring for
+  faithfulness (is the answer grounded in retrieved context?) and
+  relevance (does it actually answer the question?).
+- End-to-end feedback loops: logging real user questions and outcomes
+  (thumbs up/down, follow-up questions) to identify weak spots over time.
+
+12. RAG VS. FINE-TUNING
+- Fine-tuning bakes new knowledge or behavior into model weights through
+  additional training — useful for teaching a model a new *style* or
+  *task format*, but expensive to update and doesn't scale well for
+  frequently changing factual knowledge.
+- RAG keeps the model's weights unchanged and instead supplies fresh,
+  swappable knowledge at query time — much easier to update (just change
+  the documents) and more transparent (answers can cite sources).
+- The two are complementary: some production systems fine-tune a model
+  for tone/instruction-following while still using RAG for factual
+  grounding.
