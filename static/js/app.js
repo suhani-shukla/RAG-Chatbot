@@ -61,7 +61,8 @@ async function uploadFile(file) {
     docCard.hidden = false;
     dropZone.hidden = true;
 
-    setStatus('Ready. Ask a question on the right.', false);
+    const groundingNote = data.note ? ` ${data.note}` : '';
+    setStatus(`Ready.${groundingNote} Ask a question on the right.`, false);
     enableChat();
   } catch (err) {
     setStatus('Could not reach the server: ' + err.message, true);
@@ -126,7 +127,13 @@ function addMessage(kind, roleLabel, text, sources = [], isThinking = false) {
 
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
-  bubble.textContent = isThinking ? 'Thinking' : text;
+  if (isThinking) {
+    bubble.textContent = 'Thinking';
+  } else if (kind === 'bot') {
+    bubble.innerHTML = renderLiteMarkdown(text);
+  } else {
+    bubble.textContent = text;
+  }
 
   wrap.appendChild(role);
   wrap.appendChild(bubble);
@@ -146,4 +153,49 @@ function addMessage(kind, roleLabel, text, sources = [], isThinking = false) {
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
   return wrap;
+}
+
+// Minimal, safe markdown-lite renderer: escapes HTML first, then converts
+// **bold**, *italic*, "• " bullets and "1. " numbered lines, and newlines.
+// Deliberately small in scope -- not a full markdown parser.
+function renderLiteMarkdown(raw) {
+  const escapeHtml = (s) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  let html = escapeHtml(raw);
+
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '<em>$1</em>');
+
+  const lines = html.split('\n');
+  const rendered = [];
+  let inList = false;
+
+  for (const line of lines) {
+    const bulletMatch = line.match(/^\s*•\s+(.*)$/);
+    const numberedMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
+
+    if (bulletMatch || numberedMatch) {
+      if (!inList) {
+        rendered.push('<ul class="msg-list">');
+        inList = true;
+      }
+      rendered.push(`<li>${bulletMatch ? bulletMatch[1] : numberedMatch[2]}</li>`);
+    } else {
+      if (inList) {
+        rendered.push('</ul>');
+        inList = false;
+      }
+      if (line.trim() === '') {
+        rendered.push('<br>');
+      } else {
+        rendered.push(`<p class="msg-line">${line}</p>`);
+      }
+    }
+  }
+  if (inList) rendered.push('</ul>');
+
+  return rendered.join('');
 }
